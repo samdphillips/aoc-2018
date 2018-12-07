@@ -1,5 +1,7 @@
 #lang racket/base
 
+(require racket/sequence)
+
 (define (count-id s)
   (define dos #f)
   (define tres #f)
@@ -10,7 +12,7 @@
   (for ([c (in-string s)]) (seen! c))
   (for ([v (in-vector seen-tbl)])
     (when (= v 2) (set! dos #t))
-    (when (= v 3) (set! tres #t)))  
+    (when (= v 3) (set! tres #t)))
   (values (or (and dos 1) 0)
           (or (and tres 1) 0)))
 
@@ -35,7 +37,7 @@
       (lambda (c d)
         (check-equal? c a "2s count")
         (check-equal? d b "3s count")))))
-  
+
   (check-counts "abcdef" 0 0)
   (check-counts "bababc" 1 1)
   (check-counts "abbcde" 1 0)
@@ -71,9 +73,16 @@
 (module+ test
   (check-equal? (close-enough "abcde" "fghij") #f)
   (check-equal? (close-enough "abcde" "axcye") #f)
-  (check-equal? (close-enough "fghij" "fguij") "fgij")
+  (check-equal? (close-enough "fghij" "fguij") "fgij"))
 
-  #;
+(define (part-two lines)
+  (let ([lines (sort (sequence->list lines) string<?)])
+    (for*/or ([a (in-list lines)]
+              [b (in-list lines)]
+              #:when (not (string=? a b)))
+      (close-enough a b))))
+
+(module+ test
   (check-equal?
    (let ([input (list "abcde"
                       "fghij"
@@ -90,4 +99,10 @@
   (displayln
    (call-with-input-file "inputs/02.txt"
      (lambda (inp)
-       (part-one (in-port read-line inp))))))
+       (part-one (in-port read-line inp)))))
+
+  (displayln "PART TWO")
+  (displayln
+   (call-with-input-file "inputs/02.txt"
+     (lambda (inp)
+       (part-two (in-port read-line inp))))))

@@ -71,11 +71,6 @@
   
   (let ([old-claims (fabric-ref project coord)])
     (match old-claims
-      #;#;#;
-      ['white (update! 'gray)  0]
-      ['gray  (update! 'black) 1]
-      ['black 0]
-      
       [(list)   (update! old-claims) 0]
       [(list x) (update! old-claims)
                 (update-claim! claim-id)

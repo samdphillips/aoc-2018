@@ -4,7 +4,8 @@
   [serial-number levels])
 
 (define (make-grid serial-number)
-  (grid serial-number (make-vector 300 #f)))
+  (grid serial-number
+        (build-vector 300 (lambda (i) (make-vector (* 300 300) #f)))))
 
 (define (hundreds n)
   (let ([v (quotient n 100)])
@@ -30,13 +31,7 @@
   (+ (sub1 x) (* 300 (sub1 y))))
 
 (define (grid-cells grid level)
-  (let ([levels (grid-levels grid)])
-    (cond
-      [(vector-ref levels (sub1 level)) => values]
-      [else
-        (let ([lvl (make-vector (* 300 300) #f)])
-          (vector-set! levels (sub1 level) lvl)
-          lvl)])))
+  (vector-ref (grid-levels grid) (sub1 level)))
 
 (define (grid-ref grid level x y)
   (vector-ref (grid-cells grid level) (grid-index x y)))
@@ -97,7 +92,32 @@
   (check-equal? (grid-find-max-block! (make-grid 42)) '(21 . 61)))
 
 (module+ main
+  (define g (make-grid 3613))
   (displayln "PART ONE")
   (displayln
-    (match-let ([(cons x y) (time (grid-find-max-block! (make-grid 3613)))])
+    (match-let ([(cons x y) (time (grid-find-max-block! g))])
       (~a x "," y))))
+
+(define (grid-find-max-region! grid cycles)
+  (for*/fold ([v -1000] [coord #f] #:result coord)
+             ([r (in-range 1 (add1 cycles))]
+              [y (in-range 1 (- 302 r))]
+              [x (in-range 1 (- 302 r))])
+    (when (= 1 x y)
+      (displayln
+        (~a "level: "
+            (~a #:width 3 r)
+            " best: "
+            (~a #:width 5 v)
+            " " coord)))
+    (let ([v1 (grid-region-power! grid r x y)])
+      (if (> v1 v)
+          (values v1 (list x y r))
+          (values v coord)))))
+
+(module+ main
+  ;; only needed to go to size 13
+  (displayln "PART TWO")
+  (displayln
+    (match-let ([(list x y z) (time (grid-find-max-region! g 300))])
+      (~a #:separator "," x y z))))

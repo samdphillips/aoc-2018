@@ -129,5 +129,48 @@
         (check-equal? i (state->integer e)
                       (~a "step " (add1 n) "    "
                           (integer->state i) "    " e))
-        i)))
-)
+        i))))
+
+(define (in-bits i)
+  (define (rest-stream i)
+    (cond
+      [(zero? i) empty-stream]
+      [else
+        (stream-cons (bit/and 1 i)
+                     (rest-stream (>> i 1)))]))
+  (rest-stream i))
+
+(define (checksum-generation i)
+  (for/sum ([i (in-naturals)] [b (in-bits i)]) (* b (- i 3))))
+
+(module+ test
+  (check-equal? (checksum-generation
+                  (state->integer ".#....##....#####...#######....#.#..##."))
+                325))
+
+(define INITIAL-STATE-PAT #px"initial state: ([#.]+)")
+
+(define (read-initial-state inp)
+  (match (regexp-match INITIAL-STATE-PAT (read-line inp))
+    [(list _ s) (state->integer (~a "..." s))]))
+
+(define RULE-PAT #px"(.....) => #")
+
+(define (read-rules inp)
+  (for/fold ([rules null]) ([line (in-port read-line inp)])
+    (match (regexp-match RULE-PAT line)
+      [(list _ pat) (cons (state->integer pat) rules)]
+      [_ rules])))
+
+(module+ main
+  (displayln "PART ONE")
+  (call-with-input-file "inputs/12.txt"
+    (lambda (inp)
+      (let* ([initial-state (read-initial-state inp)]
+             [rules (read-rules inp)]
+             [bit-step (make-bit-step rules)]
+             [step (make-step bit-step)])
+        (time
+          (for/fold ([i initial-state] #:result (checksum-generation i))
+                    ([n (in-range 20)])
+            (step i)))))))

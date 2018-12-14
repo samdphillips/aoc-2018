@@ -1,10 +1,10 @@
 #lang racket
 
 (struct grid
-  [serial-number cells])
+  [serial-number levels])
 
 (define (make-grid serial-number)
-  (grid serial-number (make-vector (* 300 300) #f)))
+  (grid serial-number (make-vector 300 #f)))
 
 (define (hundreds n)
   (let ([v (quotient n 100)])
@@ -29,18 +29,47 @@
 (define (grid-index x y)
   (+ (sub1 x) (* 300 (sub1 y))))
 
-(define (grid-ref grid x y)
-  (vector-ref (grid-cells grid) (grid-index x y)))
+(define (grid-cells grid level)
+  (let ([levels (grid-levels grid)])
+    (cond
+      [(vector-ref levels (sub1 level)) => values]
+      [else
+        (let ([lvl (make-vector (* 300 300) #f)])
+          (vector-set! levels (sub1 level) lvl)
+          lvl)])))
 
-(define (grid-set! grid x y v)
-  (vector-set! (grid-cells grid) (grid-index x y) v)
+(define (grid-ref grid level x y)
+  (vector-ref (grid-cells grid level) (grid-index x y)))
+
+(define (grid-set! grid level x y v)
+  (vector-set! (grid-cells grid level) (grid-index x y) v)
   v)
 
+(define (in-edge-cells size x y)
+  (in-sequences
+    (in-parallel
+      (in-range x (+ x size))
+      (in-cycle (in-value (+ y size -1))))
+    (in-parallel
+      (in-cycle (in-value (+ x size -1)))
+      (in-range y (+ y size -1)))))
+
+(define (grid-region-power! grid size x y)
+  (define (calculate-power!)
+    (if (= 1 size)
+        (power-level (grid-serial-number grid) x y)
+        (+ (grid-region-power! grid (sub1 size) x y)
+           (for/sum ([(x y) (in-edge-cells size x y)])
+             (grid-region-power! grid 1 x y)))))
+  (or (grid-ref grid size x y)
+      (grid-set! grid size x y (calculate-power!))))
+
+(module+ test
+  (check-equal? (grid-region-power! (make-grid 8)  1   3   5) 4)
+  (check-equal? (grid-region-power! (make-grid 39) 1 217 196)  0))
+
 (define (grid-cell-power! grid x y)
-  (or (grid-ref grid x y)
-      (grid-set! grid x y
-                 (power-level
-                   (grid-serial-number grid) x y))))
+  (grid-region-power! grid 1 x y))
 
 (module+ test
   (let ([g (make-grid 8)])
@@ -48,9 +77,7 @@
     (check-equal? (grid-cell-power! g 3 5) 4)))
 
 (define (grid-block-power! grid x y)
-  (for*/sum ([y (in-range y (+ y 3))]
-             [x (in-range x (+ x 3))])
-    (grid-cell-power! grid x y)))
+  (grid-region-power! grid 3 x y))
 
 (module+ test
   (check-equal? (grid-block-power! (make-grid 18) 33 45) 29)

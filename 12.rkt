@@ -140,8 +140,8 @@
                      (rest-stream (>> i 1)))]))
   (rest-stream i))
 
-(define (checksum-generation i)
-  (for/sum ([i (in-naturals)] [b (in-bits i)]) (* b (- i 3))))
+(define (checksum-generation i [offset -3])
+  (for/sum ([i (in-naturals)] [b (in-bits i)]) (* b (+ i offset))))
 
 (module+ test
   (check-equal? (checksum-generation
@@ -163,6 +163,25 @@
       [_ rules])))
 
 (module+ main
+  (define (displayv i v)
+    (define (remove-zeroes z c)
+      (cond
+        [(= 1 (bit/and 1 z))
+         (displayln (~a #:separator " "
+                        (~a "[" (~a #:width 5 #:align 'right i) "]")
+                        (~a #:width 4 #:align 'right c)
+                        (integer->state z)))
+         v]
+        [else
+          (remove-zeroes (>> z 1) (add1 c))]))
+    (remove-zeroes v -3))
+
+  (define-values (iter1 iter2)
+    (match (current-command-line-arguments)
+     [(vector i j _ ...) (values (string->number i) (string->number j))]
+     [(vector i _ ...) (values (string->number i) 153)]
+     [_ (values 20 153)]))
+
   (displayln "PART ONE")
   (call-with-input-file "inputs/12.txt"
     (lambda (inp)
@@ -172,5 +191,15 @@
              [step (make-step bit-step)])
         (time
           (for/fold ([i initial-state] #:result (checksum-generation i))
-                    ([n (in-range 20)])
-            (step i)))))))
+                    ([n (in-range iter1)])
+            (displayv (add1 n) (step i)))))))
+
+#|
+At 153 generations the pattern stabilizes and moves 1 pot right per generation.
+[  153]   71 #...#...#...#...#...#...#...#...#.####...#...#...#...#...#...#...#...#...#...#...#...#...#...#...#...#...#..####...#...#...#...#...#...#...#...#...#...#...#...#...#...#...#..####
+|#
+  (define stable (state->integer "#...#...#...#...#...#...#...#...#.####...#...#...#...#...#...#...#...#...#...#...#...#...#...#...#...#...#..####...#...#...#...#...#...#...#...#...#...#...#...#...#...#...#..####"))
+  (displayln "PART TWO")
+  (displayln
+    (checksum-generation stable (+ iter2 (- 71 153))))
+)

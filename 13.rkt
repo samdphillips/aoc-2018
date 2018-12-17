@@ -1,29 +1,19 @@
 #lang racket
 
-(require srfi/67)
-
 (struct cart
-  [x y dir turn]
+  [dir turn (move #:mutable)]
   #:transparent)
-
-(define-syntax-rule (refine-compare-parts a b (extract compare) ...)
-  (refine-compare
-    (compare (extract a) (extract b)) ...))
-
-(define (cart-compare a b)
-  (refine-compare-parts a b
-    [cart-y number-compare]
-    [cart-x number-compare]))
-
-(define cart<? (<? cart-compare))
 
 (struct layout
   [width height cells])
 
-(struct state
-  [carts layout])
+(define (layout-offset l x y)
+  (+ x (* y (layout-width l))))
 
-(define (make-layout w h cs*)
+(define (layout-set! l x y v)
+  (vector-set! (layout-cells l) (layout-offset l x y) v))
+
+(define (make-track-layout w h cs*)
   (define size (* w h))
   (define cells (make-vector size #f))
   (define (fill! i r cs cs*)
@@ -41,6 +31,13 @@
       (fill! (add1 i) r (cdr cs) cs*)]))
   (fill! 0 0 (car cs*) (cdr cs*)))
 
+(define (make-cart-layout w h carts)
+  (define cart-layout (layout w h (make-vector (* w h) #f)))
+  (for ([cinfo (in-list carts)])
+    (match-define (list x y dir) cinfo)
+    (layout-set! cart-layout x y (cart dir 'L 0)))
+  cart-layout)
+
 (define (read-track-description inp)
   (define (read-track-char x y longest-row current-row layout carts)
     (define (add-cell c)
@@ -51,11 +48,12 @@
         (add1 x) y longest-row
         (cons (if (or (eq? dir 'N) (eq? dir 'S)) 'NS 'WE) current-row)
         layout
-        (cons (cart x y dir 'L) carts)))
+        (cons (list x y dir) carts)))
     (define (add-row) (cons (reverse current-row) layout))
     (define (finish-read y layout)
-      (values (make-layout (max longest-row x) y (reverse layout))
-              (sort carts cart<?)))
+      (let ([longest-row (max longest-row x)])
+        (values (make-track-layout longest-row y (reverse layout))
+                (make-cart-layout longest-row y carts))))
     (match (read-char inp)
       [(? eof-object?)
        (finish-read (add1 y) (add-row))]

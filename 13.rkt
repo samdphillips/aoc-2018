@@ -148,7 +148,7 @@ INPUT
   (define-values (tracks carts)
     (call-with-input-file "inputs/13.txt" read-track-description))
 
-  (define (run k move)
+  (define (run krash move)
     (for ([i (in-naturals)]
           [cur-cart (in-vector (layout-cells carts))]
           #:when (and cur-cart (= (cart-move cur-cart) move)))
@@ -163,7 +163,7 @@ INPUT
       (define-values (dir turn) (compute-turn t1 cur-cart))
       (layout-set! carts x0 y0 #f)
       (when (layout-ref carts x1 y1)
-        (k "~a,~a is occupied" x1 y1))
+        (krash x1 y1))
       (define new-cart (cart (cart-id cur-cart) dir turn (add1 move)))
       (layout-set! carts x1 y1 new-cart)
       #;
@@ -174,9 +174,10 @@ INPUT
 
   (time
     (let/ec exit
-      (define (fin . xs)
+      (define (fin x y)
         (displayln
-          (~a "PART ONE\n" (apply format xs)))
+          (~a "PART ONE\n"
+              (format "~a,~a is occupied" x y)))
         (exit))
       (for ([m (in-naturals)] [k 10000]) (run fin m)))))
 

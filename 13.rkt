@@ -144,42 +144,73 @@ v
 INPUT
 ))
 
+(define (run krash move tracks carts)
+  (for ([i (in-naturals)]
+        [cur-cart (in-vector (layout-cells carts))]
+        #:when (and cur-cart (= (cart-move cur-cart) move)))
+    (define-values (x0 y0) (layout-position carts i))
+    (define-values (dx dy) (compute-move (cart-dir cur-cart)))
+    (define x1 (+ x0 dx))
+    (define y1 (+ y0 dy))
+    (define t1 (layout-ref tracks x1 y1))
+    (unless t1
+      (error 'run "~a fell off of the tracks: (~a,~a)"
+             (cart-id cur-cart) x1 y1))
+    (define-values (dir turn) (compute-turn t1 cur-cart))
+    (layout-set! carts x0 y0 #f)
+    (cond
+      [(layout-ref carts x1 y1) (krash move cur-cart x1 y1)]
+      [else
+        (define new-cart (cart (cart-id cur-cart) dir turn (add1 move)))
+        (layout-set! carts x1 y1 new-cart)
+        (displayln
+          (let ([~a3 (lambda (v) (~a #:width 3 #:align 'right v))])
+            (~a "[" (~a #:width 5 #:align 'right move) "] "
+                "(" (~a3 x0) "," (~a3 y0) ") -> (" (~a3 x1) "," (~a3 y1) ")"
+                "   " (~a3 t1) " " new-cart)))])))
+
 (module* part-one #f
   (define-values (tracks carts)
     (call-with-input-file "inputs/13.txt" read-track-description))
 
-  (define (run krash move)
-    (for ([i (in-naturals)]
-          [cur-cart (in-vector (layout-cells carts))]
-          #:when (and cur-cart (= (cart-move cur-cart) move)))
-      (define-values (x0 y0) (layout-position carts i))
-      (define-values (dx dy) (compute-move (cart-dir cur-cart)))
-      (define x1 (+ x0 dx))
-      (define y1 (+ y0 dy))
-      (define t1 (layout-ref tracks x1 y1))
-      (unless t1
-        (error 'run "~a fell off of the tracks: (~a,~a)"
-               (cart-id cur-cart) x1 y1))
-      (define-values (dir turn) (compute-turn t1 cur-cart))
-      (layout-set! carts x0 y0 #f)
-      (when (layout-ref carts x1 y1)
-        (krash x1 y1))
-      (define new-cart (cart (cart-id cur-cart) dir turn (add1 move)))
-      (layout-set! carts x1 y1 new-cart)
-      #;
-      (displayln
-        (let ([~a3 (lambda (v) (~a #:width 3 #:align 'right v))])
-          (~a "(" (~a3 x0) "," (~a3 y0) ") -> (" (~a3 x1) "," (~a3 y1) ")"
-              "   " (~a3 t1) " " new-cart)))))
-
   (time
     (let/ec exit
-      (define (fin x y)
+      (define (fin m cur-cart x y)
         (displayln
           (~a "PART ONE\n"
               (format "~a,~a is occupied" x y)))
         (exit))
-      (for ([m (in-naturals)] [k 10000]) (run fin m)))))
+      (for ([m (in-naturals)] [k 10000]) (run fin m tracks carts)))))
+
+(module* part-two #f
+  (define-values (tracks carts)
+    (call-with-input-file "inputs/13.txt" read-track-description))
+
+  (define num-carts (for/sum ([c (in-vector (layout-cells carts))] #:when c) 1))
+  (time
+    (let/ec exit
+      (define (crash m cur-cart x y)
+        (displayln
+          (~a "[" (~a #:width 5 #:align 'right m) "]"
+              " crash: "
+              (cart-id cur-cart) " "
+              (cart-id (layout-ref carts x y))))
+        (set! num-carts (- num-carts 2))
+        (layout-set! carts x y #f)
+        (when (= num-carts 1)
+          (run void m tracks carts)
+          (define-values (last-x last-y)
+            (layout-position
+              tracks
+              (for/first ([i (in-naturals)]
+                          [c (in-vector (layout-cells carts))]
+                          #:when c) (displayln c) i)))
+          (displayln
+            (~a "PART TWO\n"
+                "Last cart at " last-x "," last-y))
+          (exit)))
+      (for ([m (in-naturals)] [k 20000])
+        (run crash m tracks carts)))))
 
 (module* viz #f
   (define-values (tracks carts)
@@ -211,4 +242,4 @@ INPUT
     (write-char #\newline)))
 
 (module* main #f
-  (require (submod ".." part-one)))
+  (require (submod ".." part-two)))

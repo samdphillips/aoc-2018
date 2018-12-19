@@ -62,16 +62,17 @@
         layout
         (cons (list x y dir) carts)))
     (define (add-row) (cons (reverse current-row) layout))
-    (define (finish-read y layout)
-      (let ([longest-row (max longest-row x)])
+    (define (finish-read layout)
+      (let ([longest-row (max longest-row x)]
+            [y (length layout)])
         (values (make-track-layout longest-row y (reverse layout))
                 (make-cart-layout longest-row y carts))))
     (match (read-char inp)
       [(? eof-object?)
-       (finish-read (add1 y) (add-row))]
+       (finish-read (add-row))]
       [#\newline
        (if (eof-object? (peek-char inp))
-           (finish-read y layout)
+           (finish-read (add-row))
            (read-track-char
              0 (add1 y) (max longest-row x) null (add-row) carts))]
       [#\space (add-cell #f)]
@@ -147,7 +148,7 @@ INPUT
   (define-values (tracks carts)
     (call-with-input-file "inputs/13.txt" read-track-description))
 
-  (define (run move)
+  (define (run k move)
     (for ([i (in-naturals)]
           [cur-cart (in-vector (layout-cells carts))]
           #:when (and cur-cart (= (cart-move cur-cart) move)))
@@ -162,19 +163,26 @@ INPUT
       (define-values (dir turn) (compute-turn t1 cur-cart))
       (layout-set! carts x0 y0 #f)
       (when (layout-ref carts x1 y1)
-        (error 'occupied "~a ~a is occupied" x1 y1))
+        (k "~a,~a is occupied" x1 y1))
       (define new-cart (cart (cart-id cur-cart) dir turn (add1 move)))
       (layout-set! carts x1 y1 new-cart)
+      #;
       (displayln
         (let ([~a3 (lambda (v) (~a #:width 3 #:align 'right v))])
           (~a "(" (~a3 x0) "," (~a3 y0) ") -> (" (~a3 x1) "," (~a3 y1) ")"
               "   " (~a3 t1) " " new-cart)))))
 
-    (for ([m (in-naturals)] [k 10000]) (run m)))
+  (time
+    (let/ec exit
+      (define (fin . xs)
+        (displayln
+          (~a "PART ONE\n" (apply format xs)))
+        (exit))
+      (for ([m (in-naturals)] [k 10000]) (run fin m)))))
 
 (module* viz #f
   (define-values (tracks carts)
-    (call-with-input-file "inputs/13a.txt" read-track-description))
+    (call-with-input-file "inputs/13.txt" read-track-description))
 
   (define (cart-dir-char c)
     (match (cart-dir c)
@@ -202,4 +210,4 @@ INPUT
     (write-char #\newline)))
 
 (module* main #f
-  (require (submod ".." viz)))
+  (require (submod ".." part-one)))

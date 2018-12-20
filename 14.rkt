@@ -2,17 +2,19 @@
 
 (define (digits n [acc null])
   (if (zero? n)
-      acc
+      (if (null? acc)
+          '(0)
+          acc)
       (let-values ([(q r) (quotient/remainder n 10)])
         (digits q (cons r acc)))))
 
-(define (run seed)
-  (for/fold ([rs '(3 7)]
+(define (run num-recipes [seed '(3 7)])
+  (for/fold ([rs seed]
              [i 0]
              [j 1]
-             #:result rs #;(take (drop rs seed) 10))
+             #:result (take (drop rs num-recipes) 10))
             ([x (in-naturals)]
-             #:break (> (length rs) (+ 10 seed)))
+             #:break (> (length rs) (+ 10 num-recipes)))
     (define a (list-ref rs i))
     (define b (list-ref rs j))
     (let* ([rs  (append rs (digits (+ a b)))]
@@ -29,8 +31,9 @@
   (check-equal? (run 2018) '(5 9 4 1 4 2 9 8 8 2))
   )
 
-
-(let ([rs (run 3000)])
-  (for ([i (in-range 1 (- (length rs) 10))])
-    (displayln (~a "[" (~a #:width 4 #:align 'right i) "] "
-                   (take (drop rs i) 10)))))
+#;
+(module+ main
+  (let ([rs (run 12 '(0 0))])
+    (for ([i (in-range 1 (- (length rs) 10))])
+      (displayln (~a "[" (~a #:width 4 #:align 'right i) "] "
+                     (take (drop rs i) 10))))))

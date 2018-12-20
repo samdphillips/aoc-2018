@@ -18,14 +18,13 @@
     (set! lrs (+ lrs (length vs))))
   (add-rs! seed)
 
-  (for/fold ([i 0] [j 1])
-            ([x (in-naturals)]
-             #:break (> lrs (+ 10 num-recipes)))
-    (define a (vector-ref rs i))
-    (define b (vector-ref rs j))
-    (add-rs! (digits (+ a b)))
-    (values (modulo (+ i a 1) lrs)
-            (modulo (+ j b 1) lrs)))
+  (let repeat ([i 0] [j 1])
+    (unless (> lrs (+ 10 num-recipes))
+      (define a (vector-ref rs i))
+      (define b (vector-ref rs j))
+      (add-rs! (digits (+ a b)))
+      (repeat (modulo (+ i a 1) lrs)
+              (modulo (+ j b 1) lrs))))
 
   (for/list ([i (in-range num-recipes (+ 10 num-recipes))])
     (vector-ref rs i)))
